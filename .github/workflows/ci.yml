@@ -4,13 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  rust:
     strategy:
       fail-fast: true
       matrix:
@@ -26,3 +25,28 @@ jobs:
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose
+
+  python:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: json-hydrate-py/requirements-dev.txt
+      - name: Set up Rust cache
+        uses: Swatinem/rust-cache@v2
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: json-hydrate-py
+          command: build
+      - name: Install
+        run: pip install target/wheels/*.whl -r json-hydrate-py/requirements-dev.txt
+      - name: Run tests
+        run: pytest
